@@ -1,18 +1,14 @@
-version: "3.9"
-
 services:
-  # =========================
-  # MySQL Database
-  # =========================
+
   db:
     image: mysql:8.0
     container_name: aws_costing_db
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_password}
-      MYSQL_DATABASE: ${DB_DATABASE:-aws_calc}
-      MYSQL_USER: ${DB_USER:-app_user}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-app_password}
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: aws_calc
+      MYSQL_USER: app_user
+      MYSQL_PASSWORD: app_password
     volumes:
       - db_data:/var/lib/mysql
       - ./database_complete.sql:/docker-entrypoint-initdb.d/init.sql
@@ -20,18 +16,17 @@ services:
       - "3307:3306"
     command: --default-authentication-plugin=mysql_native_password
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$${MYSQL_ROOT_PASSWORD}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_password"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
       - aws_costing_network
 
-  # =========================
-  # PHP-FPM
-  # =========================
   php:
-    image: php:8.1-fpm
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: aws_costing_php
     restart: unless-stopped
     working_dir: /var/www/html
@@ -40,18 +35,15 @@ services:
     environment:
       DB_HOST: db
       DB_PORT: 3306
-      DB_DATABASE: ${DB_DATABASE:-aws_calc}
-      DB_USER: ${DB_USER:-app_user}
-      DB_PASSWORD: ${DB_PASSWORD:-app_password}
+      DB_DATABASE: aws_calc
+      DB_USER: app_user
+      DB_PASSWORD: app_password
     depends_on:
       db:
         condition: service_healthy
     networks:
       - aws_costing_network
 
-  # =========================
-  # NGINX Web Server
-  # =========================
   nginx:
     image: nginx:alpine
     container_name: aws_costing_nginx
@@ -67,9 +59,6 @@ services:
     networks:
       - aws_costing_network
 
-  # =========================
-  # phpMyAdmin
-  # =========================
   phpmyadmin:
     image: phpmyadmin/phpmyadmin:latest
     container_name: aws_costing_phpmyadmin
@@ -79,24 +68,18 @@ services:
     environment:
       PMA_HOST: db
       PMA_PORT: 3306
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_password}
+      MYSQL_ROOT_PASSWORD: root_password
     depends_on:
       db:
         condition: service_healthy
     networks:
       - aws_costing_network
 
-# =========================
-# Networks
-# =========================
+
 networks:
   aws_costing_network:
     driver: bridge
 
-# =========================
-# Volumes
-# =========================
 volumes:
   db_data:
   nginx_logs:
-
